@@ -1,0 +1,151 @@
+import librosa
+import librosa.display 
+import numpy as np
+from sklearn.metrics import mean_absolute_error, mean_squared_error
+
+import matplotlib.pyplot as plt
+
+def extract_mel_spectrogram(audio, sr, n_mels=80):
+    """提取Mel谱图"""
+    return librosa.feature.melspectrogram(y=audio, sr=sr, n_mels=n_mels)
+
+def calculate_mcd(original_mel, synthesized_mel):
+    """计算MCD"""
+    return np.mean(np.sqrt(np.sum((original_mel - synthesized_mel) ** 2, axis=0)))
+
+def extract_f0(audio, sr, fmin=80, fmax=1000):
+    """提取基频（F0）"""
+    return librosa.yin(audio, fmin=fmin, fmax=fmax, sr=sr)
+
+def calculate_f0_error(original_f0, synthesized_f0):
+    """计算F0误差"""
+    mae = mean_absolute_error(original_f0, synthesized_f0)
+    rmse = np.sqrt(mean_squared_error(original_f0, synthesized_f0))
+    return mae, rmse
+
+
+def calculate_snr(original_audio, synthesized_audio):
+    """计算信噪比"""
+    noise = original_audio - synthesized_audio
+    signal_power = np.mean(original_audio ** 2)
+    noise_power = np.mean(noise ** 2)
+    if noise_power == 0:
+        return np.inf
+    return 10 * np.log10(signal_power / noise_power)
+
+def calculate_spectral_centroid(original_audio, synthesized_audio, sr):
+    """计算谱质心"""
+    orig_centroid = librosa.feature.spectral_centroid(y=original_audio, sr=sr).mean()
+    gen_centroid = librosa.feature.spectral_centroid(y=synthesized_audio, sr=sr).mean()
+    return orig_centroid, gen_centroid
+
+def calculate_spectral_contrast(original_audio, synthesized_audio, sr):
+    """计算谱对比度"""
+    orig_contrast = librosa.feature.spectral_contrast(y=original_audio, sr=sr).mean()
+    gen_contrast = librosa.feature.spectral_contrast(y=synthesized_audio, sr=sr).mean()
+    return orig_contrast, gen_contrast
+
+def calculate_spectral_flatness(original_audio, synthesized_audio):
+    """计算谱平坦度"""
+    orig_flatness = librosa.feature.spectral_flatness(y=original_audio).mean()
+    gen_flatness = librosa.feature.spectral_flatness(y=synthesized_audio).mean()
+    return orig_flatness, gen_flatness
+
+def save_mel_spectrogram(mel, title, filename, sr):
+    """保存Mel谱图"""
+    plt.figure(figsize=(10, 4))
+    librosa.display.specshow(librosa.power_to_db(mel, ref=np.max), sr=sr, fmax=8000)
+    plt.colorbar(format='%+2.0f dB')
+    plt.title(title)
+    plt.xlabel('Time')
+    plt.ylabel('Frequency')
+    plt.tight_layout()
+    plt.savefig(filename)
+    plt.close()
+
+def save_f0_contour(f0, title, filename):
+    """保存F0轮廓"""
+    plt.figure(figsize=(10, 4))
+    plt.plot(f0)
+    plt.title(title)
+    plt.xlabel('Time')
+    plt.ylabel('Frequency (Hz)')
+    plt.tight_layout()
+    plt.savefig(filename)
+    plt.close()
+
+def save_waveform(audio, title, filename, sr):
+    """保存波形图"""
+    plt.figure(figsize=(10, 4))
+    plt.plot(audio)
+    plt.title(title)
+    plt.xlabel('Time')
+    plt.ylabel('Amplitude')
+    plt.tight_layout()
+    plt.savefig(filename)
+    plt.close()
+
+def main():
+    # 加载音频
+    original_audio_path = 'data/raw/opencpop/segments/wavs/2093003461.wav'  # 原始音频路径
+    synthesized_audio_path = 'checkpoints/0228_opencpop_ds100_rel/generated_160000_/wavs/[2093003457][P]小酒窝长睫毛是你最美的记号-0228_opencpop_ds100_rel.wav'  # 合成音频路径
+
+    original_audio, sr = librosa.load(original_audio_path, sr=None)
+    synthesized_audio, _ = librosa.load(synthesized_audio_path, sr=sr)
+
+    # 裁剪音频至相同长度
+    min_length = min(len(original_audio), len(synthesized_audio))
+    original_audio = original_audio[:min_length]
+    synthesized_audio = synthesized_audio[:min_length]
+
+    # 提取Mel谱图
+    original_mel = extract_mel_spectrogram(original_audio, sr)
+    synthesized_mel = extract_mel_spectrogram(synthesized_audio, sr)
+
+    # 计算MCD
+    mcd = calculate_mcd(original_mel, synthesized_mel)
+    print(f'MCD: {mcd:.4f}')
+
+    # 提取F0
+    original_f0 = extract_f0(original_audio, sr)
+    synthesized_f0 = extract_f0(synthesized_audio, sr)
+
+    # 计算F0误差
+    f0_mae, f0_rmse = calculate_f0_error(original_f0, synthesized_f0)
+    print(f'F0 MAE: {f0_mae:.4f}')
+    print(f'F0 RMSE: {f0_rmse:.4f}')
+
+
+    # 计算信噪比
+    snr = calculate_snr(original_audio, synthesized_audio)
+    print(f'SNR: {snr:.4f} dB')
+
+    # 计算谱质心
+    spectral_centroid = calculate_spectral_centroid(original_audio, synthesized_audio, sr)
+    print(f'原始音频谱质心: {spectral_centroid[0]:.4f}')
+    print(f'合成音频谱质心: {spectral_centroid[1]:.4f}')
+
+    # 计算谱对比度
+    spectral_contrast = calculate_spectral_contrast(original_audio, synthesized_audio, sr)
+    print(f'原始音频谱对比度: {spectral_contrast[0]:.4f}')
+    print(f'合成音频谱对比度: {spectral_contrast[1]:.4f}')
+
+    # 计算谱平坦度
+    spectral_flatness = calculate_spectral_flatness(original_audio, synthesized_audio)
+    print(f'原始音频谱平坦度: {spectral_flatness[0]:.4f}')
+    print(f'合成音频谱平坦度: {spectral_flatness[1]:.4f}')
+
+    # 保存Mel谱图
+    save_mel_spectrogram(original_mel, 'Original Mel Spectrogram', 'original_mel.png', sr)
+    save_mel_spectrogram(synthesized_mel, 'Synthesized Mel Spectrogram', 'synthesized_mel.png', sr)
+
+    # 保存F0轮廓
+    save_f0_contour(original_f0, 'Original F0 Contour', 'original_f0.png')
+    save_f0_contour(synthesized_f0, 'Synthesized F0 Contour', 'synthesized_f0.png')
+
+    # 保存波形图
+    save_waveform(original_audio, 'Original Waveform', 'original_waveform.png', sr)
+    save_waveform(synthesized_audio, 'Synthesized Waveform', 'synthesized_waveform.png', sr)
+
+if __name__ == '__main__':
+    main()
