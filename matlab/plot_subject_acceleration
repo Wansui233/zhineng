@@ -1,0 +1,106 @@
+%更改网络结构部分：
+net = patternnet(18);
+
+%net = patternnet([18, 12]);
+
+%net = patternnet([18, 12, 8]);
+
+%net = patternnet([24, 18, 12, 8]);
+
+%以及从数据集中随机取一名志愿者的六种行为数据，显示其时域和频域的结果，plot_subject_acceleration代码如下：
+
+%% Load data for a random subject
+% 获取所有志愿者的ID
+subjectIDs = unique(subid);
+
+% 输出所有志愿者编号
+disp('All Subject IDs:');
+disp(subjectIDs);
+
+% 随机选择一名志愿者
+randomSubjectID = datasample(subjectIDs, 1);
+
+% 输出志愿者编号
+disp(['Selected Subject ID: ', num2str(randomSubjectID)])
+
+% Load data for all acceleration components
+[accX, actidX, actlabels, t, fs] = getRawAcceleration('SubjectID', randomSubjectID, 'Component', 'x');
+[accY, ~, ~, ~, ~] = getRawAcceleration('SubjectID', randomSubjectID, 'Component', 'y');
+[accZ, ~, ~, ~, ~] = getRawAcceleration('SubjectID', randomSubjectID, 'Component', 'z');
+
+%% Plot time-domain signals for each activity
+activities = unique(actidX);
+
+figure(1);
+for i = 1:length(activities)
+    activity = activities(i);
+    activityName = actlabels{activity};
+    
+    % Select data for the current activity
+    sel = actidX == activity;
+    accX_act = accX(sel);
+    accY_act = accY(sel);
+    accZ_act = accZ(sel);
+    t_act = t(sel);
+    
+    % Plot time-domain signals
+    subplot(length(activities), 3, (i-1)*3 + 1);
+    plot(t_act, accX_act);
+    title(['Time Domain - ', activityName, ' (X-axis)']);
+    xlabel('Time (s)');
+    ylabel('Acceleration (m/s^2)');
+    grid on;
+    hold on;
+    
+    subplot(length(activities), 3, (i-1)*3 + 2);
+    plot(t_act, accY_act);
+    title(['Time Domain - ', activityName, ' (Y-axis)']);
+    xlabel('Time (s)');
+    ylabel('Acceleration (m/s^2)');
+    grid on;
+    hold on;
+    
+    subplot(length(activities), 3, (i-1)*3 + 3);
+    plot(t_act, accZ_act);
+    title(['Time Domain - ', activityName, ' (Z-axis)']);
+    xlabel('Time (s)');
+    ylabel('Acceleration (m/s^2)');
+    grid on;
+end
+
+%% Plot frequency-domain signals for each activity
+figure(2);
+for i = 1:length(activities)
+    activity = activities(i);
+    activityName = actlabels{activity};
+    
+    % Select data for the current activity
+    sel = actidX == activity;
+    accX_act = accX(sel);
+    accY_act = accY(sel);
+    accZ_act = accZ(sel);
+    
+    % Compute and plot frequency-domain signals
+    subplot(length(activities), 3, (i-1)*3 + 1);
+    pwelch(accX_act, [], [], [], fs);
+    title(['Frequency Domain - ', activityName, ' (X-axis)']);
+    xlabel('Frequency (Hz)');
+    ylabel('Power/Frequency (dB/Hz)');
+    grid on;
+    hold on;
+    
+    subplot(length(activities), 3, (i-1)*3 + 2);
+    pwelch(accY_act, [], [], [], fs);
+    title(['Frequency Domain - ', activityName, ' (Y-axis)']);
+    xlabel('Frequency (Hz)');
+    ylabel('Power/Frequency (dB/Hz)');
+    grid on;
+    hold on;
+    
+    subplot(length(activities), 3, (i-1)*3 + 3);
+    pwelch(accZ_act, [], [], [], fs);
+    title(['Frequency Domain - ', activityName, ' (Z-axis)']);
+    xlabel('Frequency (Hz)');
+    ylabel('Power/Frequency (dB/Hz)');
+    grid on;
+end
